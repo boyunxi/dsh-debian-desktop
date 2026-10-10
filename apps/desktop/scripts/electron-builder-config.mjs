@@ -20,6 +20,7 @@ import {
   scrubWindowsSigningEnvironment,
 } from './windows-sign.mjs'
 import { resolveDesktopAutoUpdateConfig } from './desktop-auto-update-environment.mjs'
+import { resolveLinuxPackageSettings } from './linux-package-settings.mjs'
 import { resolveDesktopBuildCommit } from './desktop-build-commit.mjs'
 import { resolveDesktopBuildVersion } from './desktop-build-version.mjs'
 import { resolveDesktopPolicyEnvironment } from './desktop-policy-environment.mjs'
@@ -60,7 +61,10 @@ export function createElectronBuilderConfig(
   const unsigned = env.DSH_DESKTOP_UNSIGNED === '1'
   const packagesMacOS = targetPlatform === 'darwin' || (targetPlatform === undefined && hostPlatform === 'darwin')
   const packagesWindows = resolvedPlatform === 'win32'
-  const policy = packagesMacOS && unsigned ? undefined : resolveDesktopPolicyEnvironment(env)
+  const packagesLinux = resolvedPlatform === 'linux'
+  // A local unsigned build carries no update policy. macOS and Linux have that mode; Windows does not.
+  const policy = unsigned && !packagesWindows ? undefined : resolveDesktopPolicyEnvironment(env)
+  const linuxSettings = packagesLinux ? resolveLinuxPackageSettings(env) : undefined
   if (resolvedPlatform === 'win32') installWindowsDirectoryInstaller()
   const macOSSigning = packagesMacOS && !unsigned ? resolveMacOSSigningEnvironment(env) : undefined
   if (packagesMacOS && !unsigned) resolveMacOSNotarizationEnvironment(env)
@@ -231,8 +235,16 @@ export function createElectronBuilderConfig(
       target: ['nsis'],
     },
     linux: {
+      // The platform-neutral brand source; macOS and Windows carry framed variants of their own.
+      icon: fileURLToPath(new URL('../resources/icon.png', import.meta.url)),
       category: 'Development',
-      target: ['AppImage'],
+      // A .deb records this name in /usr/bin and in the desktop entry, so pin it instead of
+      // depending on how electron-builder sanitizes the product name.
+      executableName: 'deepseek-harness',
+      maintainer: linuxSettings?.maintainer,
+      // A .deb is installed by dpkg from a local file or an apt repository, so it carries no
+      // per-artifact signature and nothing here reaches for a certificate.
+      target: ['deb'],
     },
     nsis: {
       installerSidebar: join(buildPaths.root, 'installer-ui', 'uninstaller-sidebar.bmp'),
