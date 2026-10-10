@@ -18,6 +18,18 @@ overrides:
   'extract-zip>yauzl': '3.4.0'
   '@deepseek-ai/cosmokit': 'link:vendor/cosmokit'
   '@deepseek-ai/schemastery': 'link:vendor/schemastery'
+  # Desktop runs the dsh runtime on Electron's Node binary, whose Linux build dynamically links
+  # the system glib and leaks its symbols into the process. sharp's bundled libvips carries a
+  # second, private glib, and the collision SIGSEGVs on the first decoded image rather than
+  # raising a JS error (electron/electron#46323, upstream and unresolved).
+  #
+  # This package is a rebuild of sharp 0.35.4 and libvips with the collision fixed at the linker
+  # level via a $ORIGIN rpath. It re-exports the real, unmodified sharp on macOS and Windows, and
+  # throws on linux-arm64 where no patched build exists yet, so it is a drop-in everywhere.
+  #
+  # It pins sharp 0.35.4 where this workspace declared ^0.35.5: the patched build carries 0.35.4's
+  # code, so the substitution is a patch-level step back rather than a silent major change.
+  sharp: 'npm:@janhapke/sharp-electron@0.35.4-electron.1'
 
 peerDependencyRules:
   allowedVersions:
