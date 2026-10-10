@@ -8,6 +8,7 @@ import {
   DESKTOP_PACKAGE_SET_FILE,
   desktopCorePackageOverrides,
   desktopDshPackageSpec,
+  desktopPlatformOverrides,
   parseDesktopCorePackageSet,
   verifyDesktopCoreLockfile,
   verifyDesktopCorePackageSet,
@@ -66,6 +67,15 @@ describe('desktop core package set', () => {
       '@deepseek-ai/dsh-base': 'file:./desktop-packages/dsh-base.tgz',
       '@deepseek-ai/dsh-desktop-host': 'file:./desktop-packages/dsh-desktop-host.tgz',
     })
+  })
+
+  it('substitutes sharp only where Electron leaves the runtime unable to decode images', () => {
+    expect(desktopPlatformOverrides('linux')).toEqual({
+      sharp: 'npm:@janhapke/sharp-electron@0.35.4-electron.1',
+    })
+    // macOS and Windows decode with the shipped sharp, so those runtimes stay unchanged.
+    expect(desktopPlatformOverrides('darwin')).toEqual({})
+    expect(desktopPlatformOverrides('win32')).toEqual({})
   })
 
   it('rejects version drift, descriptor disorder, corruption, and extra files', () => {

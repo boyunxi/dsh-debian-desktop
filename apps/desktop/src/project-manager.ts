@@ -17,6 +17,7 @@ import { join } from 'node:path'
 import {
   DESKTOP_HOST_PACKAGE,
   desktopCorePackageOverrides,
+  desktopPlatformOverrides,
   verifyDesktopCorePackageSet,
 } from './core-package-set.ts'
 import type { DesktopPaths } from './paths.ts'
@@ -130,21 +131,28 @@ export class DesktopProjectManager {
   }
 }
 
-/** Create build-only project metadata for materializing the signed runtime. */
-export function createRuntimeProjectMetadata(projectDir: string, release: DesktopRelease): void {
+/**
+ * Create build-only project metadata for materializing the signed runtime.
+ * @param projectDir - Build directory that holds the verified core package set.
+ * @param release - Release identity the runtime binds to.
+ * @param platform - Target platform whose runtime is being assembled; it decides which registry
+ * substitutions the generated project needs, independently of the build host.
+ */
+export function createRuntimeProjectMetadata(projectDir: string, release: DesktopRelease, platform: NodeJS.Platform): void {
   mkdirSync(projectDir, { recursive: true, mode: 0o700 })
   const packageSet = verifyDesktopCorePackageSet(projectDir, release.version)
+  const dependencies = desktopCorePackageOverrides(packageSet)
   const manifest = {
     name: PROJECT_NAME,
     private: true,
     version: '0.0.0',
-    dependencies: desktopCorePackageOverrides(packageSet),
+    dependencies,
     dsh: { profile: { bundles: [...WEB_PROFILE.bundles] } },
   }
   writeJson(join(projectDir, 'package.json'), manifest)
   writeFileSync(
     join(projectDir, 'pnpm-workspace.yaml'),
-    workspaceFile(desktopCorePackageOverrides(packageSet)),
+    workspaceFile({ ...dependencies, ...desktopPlatformOverrides(platform) }),
     { mode: 0o600 },
   )
 }

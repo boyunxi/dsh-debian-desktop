@@ -115,6 +115,28 @@ export function desktopCorePackageOverrides(packageSet: DesktopCorePackageSet): 
   return Object.fromEntries(packageSet.packages.map(record => [record.name, desktopCorePackageSpec(record)]))
 }
 
+/** Electron-safe rebuild of sharp and libvips that replaces sharp on Linux. */
+export const DESKTOP_LINUX_SHARP_OVERRIDE = 'npm:@janhapke/sharp-electron@0.35.4-electron.1'
+
+/**
+ * Return the registry substitution the assembled runtime needs on one target platform.
+ *
+ * Desktop runs the dsh runtime on Electron's Node binary. Electron's Linux build dynamically
+ * links the system glib and leaks its symbols into the process, and sharp's bundled libvips
+ * carries a second, private glib; the collision kills the process with SIGSEGV on the first
+ * decoded image rather than raising a JS error (electron/electron#46323, upstream and
+ * unresolved). The replacement is a rebuild with the collision fixed at the linker level, and it
+ * re-exports the real, unmodified sharp everywhere else.
+ *
+ * Only Linux gets the substitution: the other platforms decode images correctly with the shipped
+ * sharp, and carrying a second 20 MB native payload there would change those builds for no gain.
+ * @param platform - Target platform of the runtime being assembled.
+ * @returns Override entries for the generated runtime project.
+ */
+export function desktopPlatformOverrides(platform: NodeJS.Platform): Record<string, string> {
+  return platform === 'linux' ? { sharp: DESKTOP_LINUX_SHARP_OVERRIDE } : {}
+}
+
 /** Return the local direct dependency spec for the dsh package. */
 export function desktopDshPackageSpec(packageSet: DesktopCorePackageSet): string {
   const record = packageSet.packages.find(entry => entry.name === DSH_PACKAGE)
