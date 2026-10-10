@@ -1,0 +1,21 @@
+#!/bin/sh
+# Run the installed CLI without changing the invoking shell or working directory.
+set -e
+launcher=$0
+while [ -L "$launcher" ]; do
+  directory=$(CDPATH= cd -- "$(dirname -- "$launcher")" && pwd -P)
+  target=$(readlink "$launcher")
+  case "$target" in
+    /*) launcher=$target ;;
+    *) launcher=$directory/$target ;;
+  esac
+done
+resources=$(CDPATH= cd -- "$(dirname -- "$launcher")/../../.." && pwd -P)
+# A Linux install keeps the Electron executable beside the resources directory rather than in a
+# macOS bundle's MacOS directory. The name is the executableName electron-builder-config.mjs pins.
+executable=$resources/../deepseek-harness
+if [ ! -x "$executable" ]; then
+  echo "dsh: cannot find the application executable at $executable" >&2
+  exit 127
+fi
+ELECTRON_RUN_AS_NODE=1 exec "$executable" --expose-internals "$resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js" "$@"
