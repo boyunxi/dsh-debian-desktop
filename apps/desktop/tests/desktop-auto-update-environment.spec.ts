@@ -107,15 +107,23 @@ describe('desktop auto-update environment', () => {
     expect(() => resolveDesktopAutoUpdateEnvironment({
       DSH_DESKTOP_AUTO_UPDATE_ENV: 'staging',
     })).toThrow(/test.*production/u)
-    expect(() => resolveDesktopAutoUpdateTarget('linux', 'x64')).toThrow(/unsupported target/u)
-    expect(() => desktopBuildRecordFilename('linux-x64' as 'mac-arm64')).toThrow(/unsupported target/u)
+    expect(() => resolveDesktopAutoUpdateTarget('freebsd', 'x64')).toThrow(/unsupported target/u)
+    expect(() => desktopBuildRecordFilename('freebsd-x64' as 'mac-arm64')).toThrow(/unsupported target/u)
+  })
+
+  it('resolves Linux update targets and their release record', () => {
+    expect(resolveDesktopAutoUpdateTarget('linux', 'x64')).toBe('linux-x64')
+    expect(resolveDesktopAutoUpdateTarget('linux', 'arm64')).toBe('linux-arm64')
+    expect(desktopBuildRecordFilename('linux-x64')).toBe('linux-x64-release.json')
   })
 
   it('uses Nightly metadata for stable and prerelease Desktop versions', () => {
     expect(desktopUpdateMetadataFilename('1.2.3', 'darwin')).toBe('nightly-mac.yml')
     expect(desktopUpdateMetadataFilename('1.2.3-alpha.4', 'darwin')).toBe('nightly-mac.yml')
     expect(desktopUpdateMetadataFilename('1.2.3-beta.2', 'win32')).toBe('nightly.yml')
+    // electron-updater reads the platform-suffixed channel file the builder emits.
+    expect(desktopUpdateMetadataFilename('1.2.3', 'linux')).toBe('nightly-linux.yml')
     expect(() => desktopUpdateMetadataFilename('not-semver', 'darwin')).toThrow(/invalid Desktop version/u)
-    expect(() => desktopUpdateMetadataFilename('1.2.3', 'linux')).toThrow(/unsupported metadata platform/u)
+    expect(() => desktopUpdateMetadataFilename('1.2.3', 'freebsd' as NodeJS.Platform)).toThrow(/unsupported metadata platform/u)
   })
 })
