@@ -235,16 +235,28 @@ export function createElectronBuilderConfig(
       target: ['nsis'],
     },
     linux: {
-      // The platform-neutral brand source; macOS and Windows carry framed variants of their own.
-      icon: fileURLToPath(new URL('../resources/icon.png', import.meta.url)),
+      // One bitmap per size the icon theme specification defines. electron-builder labels each
+      // hicolor directory from its source image's pixel size, so a single large bitmap would land
+      // in a directory no theme reads and the installed application would show no icon.
+      icon: fileURLToPath(new URL('../resources/icons/linux', import.meta.url)),
       category: 'Development',
       // A .deb records this name in /usr/bin and in the desktop entry, so pin it instead of
       // depending on how electron-builder sanitizes the product name.
       executableName: 'deepseek-harness',
       maintainer: linuxSettings?.maintainer,
+      // Electron derives the Wayland app_id and the X11 WM_CLASS from desktopName in
+      // package.json, and xdg-desktop-portal refuses a session whose app_id it cannot resolve to
+      // an installed .desktop file. Keeping the generated file name equal to that identity is
+      // what makes global shortcuts and portal sessions work instead of failing silently.
+      syncDesktopName: true,
       // A .deb is installed by dpkg from a local file or an apt repository, so it carries no
       // per-artifact signature and nothing here reaches for a certificate.
       target: ['deb'],
+    },
+    deb: {
+      // dpkg reads the first line of Description as the synopsis and everything after it as the
+      // long text, so an unset synopsis leaves `apt show` with a blank summary line.
+      synopsis: 'Desktop shell for the DeepSeek Harness agent runtime',
     },
     nsis: {
       installerSidebar: join(buildPaths.root, 'installer-ui', 'uninstaller-sidebar.bmp'),
